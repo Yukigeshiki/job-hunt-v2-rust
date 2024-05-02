@@ -1,5 +1,5 @@
 use crate::repository::Job;
-use crate::site::{CryptoJobsList, Formatter, Site};
+use crate::site::{Common, CryptoJobsList, Formatter, NearJobs, Site, SolanaJobs, SubstrateJobs};
 use reqwest::Client;
 use scraper::{Html, Selector};
 use thiserror::Error;
@@ -72,7 +72,7 @@ impl Scraper for CryptoJobsList {
 
         for el in doc.select(&jobs_list_selector) {
             let mut job = Job::new();
-            job.site = self.get_url();
+            job.site = url;
 
             if let Some(element) = el.select(&title_selector).next() {
                 job.title = element.text().collect::<String>().trim().to_owned();
@@ -108,6 +108,103 @@ impl Scraper for CryptoJobsList {
         Ok(self)
     }
 }
+
+async fn scrape_for_common<T>(t: &T, query_filter: &str) -> Result<Vec<Job>, Error>
+where
+    T: Scraper + Site + Common,
+{
+    let mut jobs = Vec::new();
+    let url = t.get_url();
+    let res = Client::new()
+        .get(format!(
+            "{url}?filter={query_filter}"
+        ))
+        .header(
+            "User-Agent",
+            "Mozilla/5.0 (iPad; CPU OS 12_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        )
+        .send()
+        .await
+        .map_err(|e| Error::Request(url.to_string(), e.to_string()))?;
+    if !res.status().is_success() {
+        Err(Error::Request(
+            url.to_string(),
+            format!("Request failed with code {}", res.status().as_u16()),
+        ))?;
+    }
+    let body = res.text().await.map_err(|e| Error::Decode(e.to_string()))?;
+    let doc = Html::parse_document(&body);
+
+    // HTML selectors
+    let jobs_list_selector =
+        <T as Scraper>::get_selector("#content > div > div > div > div > div > div")?;
+    let title_selector = <T as Scraper>::get_selector(
+        "#content > div > div > div > div > div > div > div > div > h4 > a > div > div",
+    )?;
+    let company_selector = <T as Scraper>::get_selector(
+        "#content > div > div > div > div > div > div > div > div > div > div > a",
+    )?;
+    let location_selector = <T as Scraper>::get_selector(
+        "#content > div > div > div > div > div > div > div > div > div > div > div > meta",
+    )?;
+    let date_selector = <T as Scraper>::get_selector(
+        "#content > div > div > div > div > div > div > div > div > div > div > div > div > meta",
+    )?;
+
+    for el in doc.select(&jobs_list_selector) {
+        let mut job = Job::new();
+        job.site = url;
+
+        if let Some(element) = el.select(&title_selector).next() {
+            job.title = element.text().collect::<String>().trim().to_owned();
+            if let Some(element) = el.select(&company_selector).next() {
+                job.company = element.text().collect::<String>().trim().to_owned();
+            }
+            if let Some(element) = el.select(&location_selector).next() {
+                if let Some(v) = element.value().attr("content") {
+                    job.location = v.to_owned();
+                }
+            }
+            if let Some(element) = el.select(&date_selector).next() {
+                if let Some(v) = element.value().attr("content") {
+                    job.date_posted = v.to_owned();
+                }
+            }
+
+            jobs.push(job);
+        }
+    }
+
+    Ok(jobs)
+}
+
+/// Implements the Scraper trait for common jobsites.
+macro_rules! impl_scraper_for_common {
+    ($t:ident, $qf:expr) => {
+        impl Scraper for $t {
+            async fn scrape(mut self) -> Result<Self, Error>
+            where
+                Self: Sized,
+            {
+                self.jobs = scrape_for_common(&self, $qf).await?;
+                Ok(self)
+            }
+        }
+    };
+}
+
+impl_scraper_for_common!(
+    SolanaJobs,
+    "eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19"
+);
+impl_scraper_for_common!(
+    SubstrateJobs,
+    "eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19"
+);
+impl_scraper_for_common!(
+    NearJobs,
+    "eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19"
+);
 
 #[derive(Error, Debug)]
 pub enum Error {

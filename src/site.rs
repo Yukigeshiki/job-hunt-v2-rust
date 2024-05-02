@@ -4,12 +4,9 @@ use chrono::{Duration, Local};
 /// Job site URLs used for scraping.
 pub const WEB3_CAREERS_URL: &str = "https://web3.career";
 pub const CRYPTO_JOBS_LIST_URL: &str = "https://cryptojobslist.com";
-pub const SOLANA_JOBS_URL: &str =
-    "https://jobs.solana.com/jobs?filter=eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19";
-pub const SUBSTRATE_JOBS_URL: &str =
-    "https://careers.substrate.io/jobs?filter=eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19";
-pub const NEAR_JOBS_URL: &str =
-    "https://careers.near.org/jobs?filter=eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19";
+pub const SOLANA_JOBS_URL: &str = "https://jobs.solana.com/jobs";
+pub const SUBSTRATE_JOBS_URL: &str = "https://careers.substrate.io/jobs";
+pub const NEAR_JOBS_URL: &str = "https://careers.near.org/jobs";
 
 /// All jobsite structs must implement the Site trait and conform to the structure:
 /// ```
@@ -105,3 +102,9 @@ impl Formatter for CryptoJobsList {
         }
     }
 }
+
+pub trait Common {}
+
+impl Common for SolanaJobs {}
+impl Common for SubstrateJobs {}
+impl Common for NearJobs {}
