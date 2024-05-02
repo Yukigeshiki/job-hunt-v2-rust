@@ -1,5 +1,7 @@
 use crate::repository::Job;
-use crate::site::{Common, CryptoJobsList, Formatter, NearJobs, Site, SolanaJobs, SubstrateJobs};
+use crate::site::{
+    Common, CryptoJobsList, Formatter, NearJobs, Site, SolanaJobs, SubstrateJobs, Web3Careers,
+};
 use reqwest::Client;
 use scraper::{Html, Selector};
 use thiserror::Error;
@@ -29,6 +31,91 @@ pub trait Scraper {
     /// Gets a selector for a specific HTML element.
     fn get_selector(selectors: &str) -> Result<Selector, Error> {
         Selector::parse(selectors).map_err(|e| Error::Selector(e.to_string()))
+    }
+}
+
+impl Scraper for Web3Careers {
+    async fn scrape(mut self) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let url = self.get_url();
+        let res = Client::new()
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| Error::Request(url.to_string(), e.to_string()))?;
+        if !res.status().is_success() {
+            Err(Error::Request(
+                url.to_string(),
+                format!("Request failed with code {}", res.status().as_u16()),
+            ))?;
+        }
+        let body = res.text().await.map_err(|e| Error::Decode(e.to_string()))?;
+        let doc = Html::parse_document(&body);
+
+        // HTML selectors
+        let jobs_list_selector =
+            Self::get_selector("body > main > div > div > div > div > div > table > tbody > tr")?;
+        let title_selector = Self::get_selector(
+            "body > main > div > div > div > div > div > table > tbody > tr > td > div > div > div > a > h2",
+        )?;
+        let company_selector = Self::get_selector(
+            "body > main > div > div > div > div > div > table > tbody > tr > td > a > h3",
+        )?;
+        let location_selector = Self::get_selector(
+            "body > main > div > div > div > div > div > table > tbody > tr > td:nth-child(4)",
+        )?;
+        let date_selector = Self::get_selector(
+            "body > main > div > div > div > div > div > table > tbody > tr > td > time",
+        )?;
+        let remuneration_selector = Self::get_selector(
+            "body > main > div > div > div > div > div > table > tbody > tr > td:nth-child(5) > p",
+        )?;
+        let tag_selector = Self::get_selector(
+            "body > main > div > div > div > div > div > table > tbody > tr > td > div > span",
+        )?;
+
+        for el in doc.select(&jobs_list_selector) {
+            let mut job = Job::new();
+            job.site = url;
+
+            if let Some(element) = el.select(&title_selector).next() {
+                job.title = element.text().collect::<String>().trim().to_owned();
+                if let Some(path_raw) = el.value().attr("onclick") {
+                    job.apply = format!(
+                        "{}{}",
+                        self.get_url(),
+                        Self::format_apply_link_from(path_raw)
+                    );
+                }
+                if let Some(element) = el.select(&company_selector).next() {
+                    job.company = element.text().collect::<String>().trim().to_owned();
+                }
+                if let Some(element) = el.select(&location_selector).next() {
+                    job.location = element.text().collect::<String>().trim().to_owned();
+                }
+                if let Some(element) = el.select(&date_selector).next() {
+                    if let Some(date_raw) = element.value().attr("datetime") {
+                        job.date_posted = date_raw.split(' ').next().unwrap_or("").to_owned();
+                    }
+                }
+                if let Some(element) = el.select(&remuneration_selector).next() {
+                    let remuneration_raw = element.text().collect::<String>().trim().to_owned();
+                    if !remuneration_raw.is_empty() {
+                        job.remuneration = remuneration_raw
+                    }
+                }
+                for tag_el in el.select(&tag_selector) {
+                    job.tags
+                        .push(tag_el.text().collect::<String>().trim().to_owned())
+                }
+
+                self.jobs.push(job);
+            }
+        }
+
+        Ok(self)
     }
 }
 

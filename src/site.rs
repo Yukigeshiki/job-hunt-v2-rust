@@ -76,6 +76,17 @@ generate_jobsite_struct_and_impl!(SolanaJobs, SOLANA_JOBS_URL);
 generate_jobsite_struct_and_impl!(SubstrateJobs, SUBSTRATE_JOBS_URL);
 generate_jobsite_struct_and_impl!(NearJobs, NEAR_JOBS_URL);
 
+impl Web3Careers {
+    /// Formats an onclick function (as a &str) into a URL path string.
+    pub fn format_apply_link_from(a: &str) -> String {
+        let v = a.split(' ').collect::<Vec<&str>>();
+        match v.len() {
+            2 => v[1].replace(['\'', ')'], ""),
+            _ => "".into(),
+        }
+    }
+}
+
 impl Formatter for CryptoJobsList {
     fn format_date_from(time_elapsed: String) -> String {
         let v = time_elapsed.chars().collect::<Vec<char>>();
