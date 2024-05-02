@@ -1,8 +1,8 @@
 use job_hunt::scraper::Scraper;
-use job_hunt::site::{Site, Web3Careers};
+use job_hunt::site::{Site, SolanaJobs};
 
 #[tokio::main]
 async fn main() {
-    let web3_careers = Web3Careers::new();
-    web3_careers.scrape().await.expect("Something went wrong!");
+    let solana_jobs = SolanaJobs::new();
+    solana_jobs.scrape().await.expect("Something went wrong!");
 }

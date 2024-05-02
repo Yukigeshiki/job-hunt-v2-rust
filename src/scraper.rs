@@ -177,7 +177,7 @@ impl Scraper for CryptoJobsList {
             if let Some(element) = el.select(&title_selector).next() {
                 job.title = element.text().collect::<String>().trim().to_owned();
                 if let Some(path) = element.value().attr("href") {
-                    job.apply = format!("{}{}", self.get_url(), path);
+                    job.apply = format!("{}{}", url, path);
                 }
                 if let Some(element) = el.select(&company_selector).next() {
                     job.company = element.text().collect::<String>().trim().to_owned();
@@ -209,8 +209,36 @@ impl Scraper for CryptoJobsList {
     }
 }
 
+/// Implements the Scraper trait for common jobsites.
+macro_rules! impl_scraper_for_common {
+    ($t:ident, $qp:expr) => {
+        impl Scraper for $t {
+            async fn scrape(mut self) -> Result<Self, Error>
+            where
+                Self: Sized,
+            {
+                self.jobs = scrape_for_common(&self, $qp).await?;
+                Ok(self)
+            }
+        }
+    };
+}
+
+impl_scraper_for_common!(
+    SolanaJobs,
+    "eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19"
+);
+impl_scraper_for_common!(
+    SubstrateJobs,
+    "eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19"
+);
+impl_scraper_for_common!(
+    NearJobs,
+    "eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19"
+);
+
 /// Used to scrape for a set identically formatted jobsites (Solana, Substrate, Near).
-async fn scrape_for_common<T>(t: &T, query_filter: &str) -> Result<Vec<Job>, Error>
+async fn scrape_for_common<T>(t: &T, query_param: &str) -> Result<Vec<Job>, Error>
 where
     T: Scraper + Site + Common,
 {
@@ -218,7 +246,7 @@ where
     let url = t.get_url();
     let res = Client::new()
         .get(format!(
-            "{url}?filter={query_filter}"
+            "{url}?filter={query_param}"
         ))
         .header(
             "User-Agent",
@@ -250,6 +278,8 @@ where
     let date_selector = T::get_selector(
         "#content > div > div > div > div > div > div > div > div > div > div > div > div > meta",
     )?;
+    let apply_selector =
+        T::get_selector("#content > div > div > div > div > div > div > div > div.sc-beqWaB.sc-gueYoa.hcVvkM.MYFxR > a")?;
 
     for el in doc.select(&jobs_list_selector) {
         let mut job = Job::new();
@@ -270,6 +300,16 @@ where
                     job.date_posted = v.to_owned();
                 }
             }
+            if let Some(element) = el.select(&apply_selector).next() {
+                if let Some(path_raw) = element.value().attr("href") {
+                    job.apply = if path_raw.starts_with("https") {
+                        path_raw.to_string()
+                    } else {
+                        format!("{}{}", url, path_raw).replacen("jobs/", "", 1)
+                    };
+                    println!("{}", job.apply);
+                }
+            }
 
             jobs.push(job);
         }
@@ -277,34 +317,6 @@ where
 
     Ok(jobs)
 }
-
-/// Implements the Scraper trait for common jobsites.
-macro_rules! impl_scraper_for_common {
-    ($t:ident, $qf:expr) => {
-        impl Scraper for $t {
-            async fn scrape(mut self) -> Result<Self, Error>
-            where
-                Self: Sized,
-            {
-                self.jobs = scrape_for_common(&self, $qf).await?;
-                Ok(self)
-            }
-        }
-    };
-}
-
-impl_scraper_for_common!(
-    SolanaJobs,
-    "eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19"
-);
-impl_scraper_for_common!(
-    SubstrateJobs,
-    "eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19"
-);
-impl_scraper_for_common!(
-    NearJobs,
-    "eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19"
-);
 
 #[derive(Error, Debug)]
 pub enum Error {
