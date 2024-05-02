@@ -39,84 +39,97 @@ impl Scraper for Web3Careers {
     where
         Self: Sized,
     {
-        let url = self.get_url();
-        let res = Client::new()
-            .get(url)
-            .send()
-            .await
-            .map_err(|e| Error::Request(url.to_string(), e.to_string()))?;
-        if !res.status().is_success() {
-            Err(Error::Request(
-                url.to_string(),
-                format!("Request failed with code {}", res.status().as_u16()),
-            ))?;
+        for i in 1..6 {
+            let mut jobs = scrape_for_web3careers(&self, i).await?;
+            self.jobs.append(&mut jobs);
         }
-        let body = res.text().await.map_err(|e| Error::Decode(e.to_string()))?;
-        let doc = Html::parse_document(&body);
-
-        // HTML selectors
-        let jobs_list_selector =
-            Self::get_selector("body > main > div > div > div > div > div > table > tbody > tr")?;
-        let title_selector = Self::get_selector(
-            "body > main > div > div > div > div > div > table > tbody > tr > td > div > div > div > a > h2",
-        )?;
-        let company_selector = Self::get_selector(
-            "body > main > div > div > div > div > div > table > tbody > tr > td > a > h3",
-        )?;
-        let location_selector = Self::get_selector(
-            "body > main > div > div > div > div > div > table > tbody > tr > td:nth-child(4)",
-        )?;
-        let date_selector = Self::get_selector(
-            "body > main > div > div > div > div > div > table > tbody > tr > td > time",
-        )?;
-        let remuneration_selector = Self::get_selector(
-            "body > main > div > div > div > div > div > table > tbody > tr > td:nth-child(5) > p",
-        )?;
-        let tag_selector = Self::get_selector(
-            "body > main > div > div > div > div > div > table > tbody > tr > td > div > span",
-        )?;
-
-        for el in doc.select(&jobs_list_selector) {
-            let mut job = Job::new();
-            job.site = url;
-
-            if let Some(element) = el.select(&title_selector).next() {
-                job.title = element.text().collect::<String>().trim().to_owned();
-                if let Some(path_raw) = el.value().attr("onclick") {
-                    job.apply = format!(
-                        "{}{}",
-                        self.get_url(),
-                        Self::format_apply_link_from(path_raw)
-                    );
-                }
-                if let Some(element) = el.select(&company_selector).next() {
-                    job.company = element.text().collect::<String>().trim().to_owned();
-                }
-                if let Some(element) = el.select(&location_selector).next() {
-                    job.location = element.text().collect::<String>().trim().to_owned();
-                }
-                if let Some(element) = el.select(&date_selector).next() {
-                    if let Some(date_raw) = element.value().attr("datetime") {
-                        job.date_posted = date_raw.split(' ').next().unwrap_or("").to_owned();
-                    }
-                }
-                if let Some(element) = el.select(&remuneration_selector).next() {
-                    let remuneration_raw = element.text().collect::<String>().trim().to_owned();
-                    if !remuneration_raw.is_empty() {
-                        job.remuneration = remuneration_raw
-                    }
-                }
-                for tag_el in el.select(&tag_selector) {
-                    job.tags
-                        .push(tag_el.text().collect::<String>().trim().to_owned())
-                }
-
-                self.jobs.push(job);
-            }
-        }
-
         Ok(self)
     }
+}
+
+/// Used to scrape web3careers jobsite for a specific page number.
+async fn scrape_for_web3careers<T>(t: &T, page_number: u8) -> Result<Vec<Job>, Error>
+where
+    T: Scraper + Site,
+{
+    let mut jobs = Vec::new();
+    let url = t.get_url();
+    let res = Client::new()
+        .get(format!("{}?page={}", url, page_number))
+        .send()
+        .await
+        .map_err(|e| Error::Request(url.to_string(), e.to_string()))?;
+    if !res.status().is_success() {
+        Err(Error::Request(
+            url.to_string(),
+            format!("Request failed with code {}", res.status().as_u16()),
+        ))?;
+    }
+    let body = res.text().await.map_err(|e| Error::Decode(e.to_string()))?;
+    let doc = Html::parse_document(&body);
+
+    // HTML selectors
+    let jobs_list_selector =
+        T::get_selector("body > main > div > div > div > div > div > table > tbody > tr")?;
+    let title_selector = T::get_selector(
+        "body > main > div > div > div > div > div > table > tbody > tr > td > div > div > div > a > h2",
+    )?;
+    let company_selector = T::get_selector(
+        "body > main > div > div > div > div > div > table > tbody > tr > td > a > h3",
+    )?;
+    let location_selector = T::get_selector(
+        "body > main > div > div > div > div > div > table > tbody > tr > td:nth-child(4)",
+    )?;
+    let date_selector = T::get_selector(
+        "body > main > div > div > div > div > div > table > tbody > tr > td > time",
+    )?;
+    let remuneration_selector = T::get_selector(
+        "body > main > div > div > div > div > div > table > tbody > tr > td:nth-child(5) > p",
+    )?;
+    let tag_selector = T::get_selector(
+        "body > main > div > div > div > div > div > table > tbody > tr > td > div > span",
+    )?;
+
+    for el in doc.select(&jobs_list_selector) {
+        let mut job = Job::new();
+        job.site = url;
+
+        if let Some(element) = el.select(&title_selector).next() {
+            job.title = element.text().collect::<String>().trim().to_owned();
+            if let Some(path_raw) = el.value().attr("onclick") {
+                job.apply = format!(
+                    "{}{}",
+                    t.get_url(),
+                    Web3Careers::format_apply_link_from(path_raw)
+                );
+            }
+            if let Some(element) = el.select(&company_selector).next() {
+                job.company = element.text().collect::<String>().trim().to_owned();
+            }
+            if let Some(element) = el.select(&location_selector).next() {
+                job.location = element.text().collect::<String>().trim().to_owned();
+            }
+            if let Some(element) = el.select(&date_selector).next() {
+                if let Some(date_raw) = element.value().attr("datetime") {
+                    job.date_posted = date_raw.split(' ').next().unwrap_or("").to_owned();
+                }
+            }
+            if let Some(element) = el.select(&remuneration_selector).next() {
+                let remuneration_raw = element.text().collect::<String>().trim().to_owned();
+                if !remuneration_raw.is_empty() {
+                    job.remuneration = remuneration_raw
+                }
+            }
+            for tag_el in el.select(&tag_selector) {
+                job.tags
+                    .push(tag_el.text().collect::<String>().trim().to_owned())
+            }
+
+            jobs.push(job);
+        }
+    }
+
+    Ok(jobs)
 }
 
 impl Scraper for CryptoJobsList {
@@ -224,18 +237,17 @@ where
     let doc = Html::parse_document(&body);
 
     // HTML selectors
-    let jobs_list_selector =
-        <T as Scraper>::get_selector("#content > div > div > div > div > div > div")?;
-    let title_selector = <T as Scraper>::get_selector(
+    let jobs_list_selector = T::get_selector("#content > div > div > div > div > div > div")?;
+    let title_selector = T::get_selector(
         "#content > div > div > div > div > div > div > div > div > h4 > a > div > div",
     )?;
-    let company_selector = <T as Scraper>::get_selector(
+    let company_selector = T::get_selector(
         "#content > div > div > div > div > div > div > div > div > div > div > a",
     )?;
-    let location_selector = <T as Scraper>::get_selector(
+    let location_selector = T::get_selector(
         "#content > div > div > div > div > div > div > div > div > div > div > div > meta",
     )?;
-    let date_selector = <T as Scraper>::get_selector(
+    let date_selector = T::get_selector(
         "#content > div > div > div > div > div > div > div > div > div > div > div > div > meta",
     )?;
 
