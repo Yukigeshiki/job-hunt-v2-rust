@@ -109,6 +109,7 @@ impl Scraper for CryptoJobsList {
     }
 }
 
+/// Used to scrape for a set identically formatted jobsites (Solana, Substrate, Near).
 async fn scrape_for_common<T>(t: &T, query_filter: &str) -> Result<Vec<Job>, Error>
 where
     T: Scraper + Site + Common,
