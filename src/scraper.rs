@@ -3,7 +3,7 @@ use crate::site::{
     Common, CryptoJobsList, Formatter, NearJobs, Site, SolanaJobs, SubstrateJobs, Web3Careers,
 };
 use reqwest::Client;
-use scraper::{Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 use thiserror::Error;
 
 /// All jobsite structs must implement the Scraper trait.
@@ -28,9 +28,41 @@ pub trait Scraper {
     where
         Self: Sized;
 
+    /// Gets an HTML doc for a jobsite.
+    async fn get_html_doc(full_url: &str) -> Result<Html, Error> {
+        let res = Client::new()
+            .get(full_url)
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (iPad; CPU OS 12_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+            )
+            .send()
+            .await
+            .map_err(|e| Error::Request(full_url.to_string(), e.to_string()))?;
+        if !res.status().is_success() {
+            Err(Error::Request(
+                full_url.to_string(),
+                format!("Request failed with code {}", res.status().as_u16()),
+            ))?;
+        }
+        let body = res.text().await.map_err(|e| Error::Decode(e.to_string()))?;
+        let doc = Html::parse_document(&body);
+        Ok(doc)
+    }
+
     /// Gets a selector for a specific HTML element.
     fn get_selector(selectors: &str) -> Result<Selector, Error> {
         Selector::parse(selectors).map_err(|e| Error::Selector(e.to_string()))
+    }
+}
+
+trait GetText {
+    fn get_text(&self) -> String;
+}
+
+impl GetText for ElementRef<'_> {
+    fn get_text(&self) -> String {
+        self.text().collect::<String>().trim().to_string()
     }
 }
 
@@ -54,19 +86,8 @@ where
 {
     let mut jobs = Vec::new();
     let url = t.get_url();
-    let res = Client::new()
-        .get(format!("{}?page={}", url, page_number))
-        .send()
-        .await
-        .map_err(|e| Error::Request(url.to_string(), e.to_string()))?;
-    if !res.status().is_success() {
-        Err(Error::Request(
-            url.to_string(),
-            format!("Request failed with code {}", res.status().as_u16()),
-        ))?;
-    }
-    let body = res.text().await.map_err(|e| Error::Decode(e.to_string()))?;
-    let doc = Html::parse_document(&body);
+    let full_url = format!("{}?page={}", url, page_number);
+    let doc = T::get_html_doc(&full_url).await?;
 
     // HTML selectors
     let jobs_list_selector =
@@ -95,34 +116,30 @@ where
         job.site = url;
 
         if let Some(element) = el.select(&title_selector).next() {
-            job.title = element.text().collect::<String>().trim().to_owned();
+            job.title = element.get_text();
             if let Some(path_raw) = el.value().attr("onclick") {
-                job.apply = format!(
-                    "{}{}",
-                    t.get_url(),
-                    Web3Careers::format_apply_link_from(path_raw)
-                );
+                job.apply = format!("{}{}", url, Web3Careers::format_apply_path_from(path_raw));
             }
             if let Some(element) = el.select(&company_selector).next() {
-                job.company = element.text().collect::<String>().trim().to_owned();
+                job.company = element.get_text();
             }
             if let Some(element) = el.select(&location_selector).next() {
-                job.location = element.text().collect::<String>().trim().to_owned();
+                job.location = element.get_text();
             }
             if let Some(element) = el.select(&date_selector).next() {
                 if let Some(date_raw) = element.value().attr("datetime") {
-                    job.date_posted = date_raw.split(' ').next().unwrap_or("").to_owned();
+                    job.date_posted = date_raw.split(' ').collect::<Vec<_>>()[0].to_owned();
+                    // here
                 }
             }
             if let Some(element) = el.select(&remuneration_selector).next() {
-                let remuneration_raw = element.text().collect::<String>().trim().to_owned();
+                let remuneration_raw = element.get_text();
                 if !remuneration_raw.is_empty() {
                     job.remuneration = remuneration_raw
                 }
             }
             for tag_el in el.select(&tag_selector) {
-                job.tags
-                    .push(tag_el.text().collect::<String>().trim().to_owned())
+                job.tags.push(tag_el.get_text())
             }
 
             jobs.push(job);
@@ -138,19 +155,8 @@ impl Scraper for CryptoJobsList {
         Self: Sized,
     {
         let url = self.get_url();
-        let res = Client::new()
-            .get(format!("{url}/engineering?sort=recent"))
-            .send()
-            .await
-            .map_err(|e| Error::Request(url.to_string(), e.to_string()))?;
-        if !res.status().is_success() {
-            Err(Error::Request(
-                url.to_string(),
-                format!("Request failed with code {}", res.status().as_u16()),
-            ))?;
-        }
-        let body = res.text().await.map_err(|e| Error::Decode(e.to_string()))?;
-        let doc = Html::parse_document(&body);
+        let full_url = format!("{url}/engineering?sort=recent");
+        let doc = Self::get_html_doc(&full_url).await?;
 
         // HTML selectors
         let jobs_list_selector =
@@ -175,23 +181,23 @@ impl Scraper for CryptoJobsList {
             job.site = url;
 
             if let Some(element) = el.select(&title_selector).next() {
-                job.title = element.text().collect::<String>().trim().to_owned();
+                job.title = element.get_text();
                 if let Some(path) = element.value().attr("href") {
                     job.apply = format!("{}{}", url, path);
                 }
                 if let Some(element) = el.select(&company_selector).next() {
-                    job.company = element.text().collect::<String>().trim().to_owned();
+                    job.company = element.get_text();
                 }
                 if let Some(element) = el.select(&location_selector).next() {
-                    job.location = element.text().collect::<String>().trim().to_owned();
+                    job.location = element.get_text();
                 }
                 if let Some(element) = el.select(&date_selector).next() {
-                    let date_raw = element.text().collect::<String>().trim().to_owned();
-                    job.date_posted = Self::format_date_from(date_raw);
+                    let date_raw = element.get_text();
+                    job.date_posted = CryptoJobsList::format_date_from(date_raw);
                 }
                 if let Some(element) = el.select(&remuneration_selector).next() {
-                    let remuneration_raw = element.text().collect::<String>().trim().to_owned();
-                    job.remuneration = Self::format_remuneration_from(remuneration_raw);
+                    let remuneration_raw = element.get_text();
+                    job.remuneration = CryptoJobsList::format_remuneration_from(remuneration_raw);
                 }
                 for tag_el in el.select(&tag_selector) {
                     job.tags
@@ -244,25 +250,8 @@ where
 {
     let mut jobs = Vec::new();
     let url = t.get_url();
-    let res = Client::new()
-        .get(format!(
-            "{url}?filter={query_param}"
-        ))
-        .header(
-            "User-Agent",
-            "Mozilla/5.0 (iPad; CPU OS 12_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
-        )
-        .send()
-        .await
-        .map_err(|e| Error::Request(url.to_string(), e.to_string()))?;
-    if !res.status().is_success() {
-        Err(Error::Request(
-            url.to_string(),
-            format!("Request failed with code {}", res.status().as_u16()),
-        ))?;
-    }
-    let body = res.text().await.map_err(|e| Error::Decode(e.to_string()))?;
-    let doc = Html::parse_document(&body);
+    let full_url = format!("{url}?filter={query_param}");
+    let doc = T::get_html_doc(&full_url).await?;
 
     // HTML selectors
     let jobs_list_selector = T::get_selector("#content > div > div > div > div > div > div")?;
@@ -286,18 +275,18 @@ where
         job.site = url;
 
         if let Some(element) = el.select(&title_selector).next() {
-            job.title = element.text().collect::<String>().trim().to_owned();
+            job.title = element.get_text();
             if let Some(element) = el.select(&company_selector).next() {
-                job.company = element.text().collect::<String>().trim().to_owned();
+                job.company = element.get_text();
             }
             if let Some(element) = el.select(&location_selector).next() {
-                if let Some(v) = element.value().attr("content") {
-                    job.location = v.to_owned();
+                if let Some(c) = element.value().attr("content") {
+                    job.location = c.to_string();
                 }
             }
             if let Some(element) = el.select(&date_selector).next() {
-                if let Some(v) = element.value().attr("content") {
-                    job.date_posted = v.to_owned();
+                if let Some(c) = element.value().attr("content") {
+                    job.date_posted = c.to_string();
                 }
             }
             if let Some(element) = el.select(&apply_selector).next() {
@@ -305,7 +294,7 @@ where
                     job.apply = if path_raw.starts_with("https") {
                         path_raw.to_string()
                     } else {
-                        format!("{}{}", url, path_raw).replacen("jobs/", "", 1)
+                        format!("{}{}", url, path_raw).replacen("jobs/", "", 1) // here
                     };
                     println!("{}", job.apply);
                 }
