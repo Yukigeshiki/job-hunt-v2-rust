@@ -90,26 +90,16 @@ where
     let doc = T::get_html_doc(&full_url).await?;
 
     // HTML selectors
-    let jobs_list_selector =
-        T::get_selector("body > main > div > div > div > div > div > table > tbody > tr")?;
-    let title_selector = T::get_selector(
-        "body > main > div > div > div > div > div > table > tbody > tr > td > div > div > div > a > h2",
-    )?;
-    let company_selector = T::get_selector(
-        "body > main > div > div > div > div > div > table > tbody > tr > td > a > h3",
-    )?;
-    let location_selector = T::get_selector(
-        "body > main > div > div > div > div > div > table > tbody > tr > td:nth-child(4)",
-    )?;
-    let date_selector = T::get_selector(
-        "body > main > div > div > div > div > div > table > tbody > tr > td > time",
-    )?;
-    let remuneration_selector = T::get_selector(
-        "body > main > div > div > div > div > div > table > tbody > tr > td:nth-child(5) > p",
-    )?;
-    let tag_selector = T::get_selector(
-        "body > main > div > div > div > div > div > table > tbody > tr > td > div > span",
-    )?;
+    let jobs_list_selector = T::get_selector("body>main>div>div>div>div>div>table>tbody>tr")?;
+    let title_selector =
+        T::get_selector("body>main>div>div>div>div>div>table>tbody>tr>td>div>div>div>a>h2")?;
+    let company_selector = T::get_selector("body>main>div>div>div>div>div>table>tbody>tr>td>a>h3")?;
+    let location_selector =
+        T::get_selector("body>main>div>div>div>div>div>table>tbody>tr>td:nth-child(4)")?;
+    let date_selector = T::get_selector("body>main>div>div>div>div>div>table>tbody>tr>td>time")?;
+    let remuneration_selector =
+        T::get_selector("body>main>div>div>div>div>div>table>tbody>tr>td:nth-child(5)>p")?;
+    let tag_selector = T::get_selector("body>main>div>div>div>div>div>table>tbody>tr>td>div>span")?;
 
     for el in doc.select(&jobs_list_selector) {
         let mut job = Job::new();
@@ -158,22 +148,15 @@ impl Scraper for CryptoJobsList {
         let doc = Self::get_html_doc(&full_url).await?;
 
         // HTML selectors
-        let jobs_list_selector =
-            Self::get_selector("main > section > section > table > tbody > tr")?;
-        let title_selector =
-            Self::get_selector("main > section > section > table > tbody > tr > td > div > a")?;
-        let company_selector =
-            Self::get_selector("main > section > section > table > tbody > tr > td > a")?;
-        let location_selector =
-            Self::get_selector("main > section > section > table > tbody > tr > td > span")?;
-        let date_selector = Self::get_selector(
-            "main > section > section > table > tbody > tr > td.job-time-since-creation",
-        )?;
-        let remuneration_selector = Self::get_selector(
-            "main > section > section > table > tbody > tr > td > span.job-salary-text",
-        )?;
-        let tag_selector =
-            Self::get_selector("main > section > section > table > tbody > tr > td > span")?;
+        let jobs_list_selector = Self::get_selector("main>section>section>table>tbody>tr")?;
+        let title_selector = Self::get_selector("main>section>section>table>tbody>tr>td>div>a")?;
+        let company_selector = Self::get_selector("main>section>section>table>tbody>tr>td>a")?;
+        let location_selector = Self::get_selector("main>section>section>table>tbody>tr>td>span")?;
+        let date_selector =
+            Self::get_selector("main>section>section>table>tbody>tr>td.job-time-since-creation")?;
+        let remuneration_selector =
+            Self::get_selector("main>section>section>table>tbody>tr>td>span.job-salary-text")?;
+        let tag_selector = Self::get_selector("main>section>section>table>tbody>tr>td>span")?;
 
         for el in doc.select(&jobs_list_selector) {
             let mut job = Job::new();
@@ -253,21 +236,16 @@ where
     let doc = T::get_html_doc(&full_url).await?;
 
     // HTML selectors
-    let jobs_list_selector = T::get_selector("#content > div > div > div > div > div > div")?;
-    let title_selector = T::get_selector(
-        "#content > div > div > div > div > div > div > div > div > h4 > a > div > div",
+    let jobs_list_selector = T::get_selector("#content>div>div>div>div>div>div")?;
+    let title_selector = T::get_selector("#content>div>div>div>div>div>div>div>div>h4>a>div>div")?;
+    let company_selector = T::get_selector("#content>div>div>div>div>div>div>div>div>div>div>a")?;
+    let location_selector =
+        T::get_selector("#content>div>div>div>div>div>div>div>div>div>div>div>meta")?;
+    let date_selector =
+        T::get_selector("#content>div>div>div>div>div>div>div>div>div>div>div>div>meta")?;
+    let apply_selector = T::get_selector(
+        "#content>div>div>div>div>div>div>div>div.sc-beqWaB.sc-gueYoa.hcVvkM.MYFxR>a",
     )?;
-    let company_selector = T::get_selector(
-        "#content > div > div > div > div > div > div > div > div > div > div > a",
-    )?;
-    let location_selector = T::get_selector(
-        "#content > div > div > div > div > div > div > div > div > div > div > div > meta",
-    )?;
-    let date_selector = T::get_selector(
-        "#content > div > div > div > div > div > div > div > div > div > div > div > div > meta",
-    )?;
-    let apply_selector =
-        T::get_selector("#content > div > div > div > div > div > div > div > div.sc-beqWaB.sc-gueYoa.hcVvkM.MYFxR > a")?;
 
     for el in doc.select(&jobs_list_selector) {
         let mut job = Job::new();
@@ -295,7 +273,6 @@ where
                     } else {
                         T::format_apply_path_from(url, path_raw)
                     };
-                    println!("{}", job.apply);
                 }
             }
 
