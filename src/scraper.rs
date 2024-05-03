@@ -29,8 +29,8 @@ pub trait Scraper {
         Self: Sized;
 
     /// Gets an HTML doc for a jobsite.
-    async fn get_html_doc(full_url: &str) -> Result<Html, Error> {
-        let res = Client::new()
+    async fn get_html_doc(client: &Client, full_url: &str) -> Result<Html, Error> {
+        let res = client
             .get(full_url)
             .header(
                 "User-Agent",
@@ -71,8 +71,9 @@ impl Scraper for Web3Careers {
     where
         Self: Sized,
     {
+        let client = Client::new();
         for i in 1..6 {
-            let mut jobs = scrape_for_web3careers(&self, i).await?;
+            let mut jobs = scrape_for_web3careers(&self, &client, i).await?;
             self.jobs.append(&mut jobs);
         }
         Ok(self)
@@ -80,14 +81,18 @@ impl Scraper for Web3Careers {
 }
 
 /// Used to scrape web3careers jobsite for a specific page number.
-async fn scrape_for_web3careers<T>(t: &T, page_number: u8) -> Result<Vec<Job>, Error>
+async fn scrape_for_web3careers<T>(
+    t: &T,
+    client: &Client,
+    page_number: u8,
+) -> Result<Vec<Job>, Error>
 where
     T: Scraper + Site,
 {
     let mut jobs = Vec::new();
     let url = t.get_url();
     let full_url = format!("{}?page={}", url, page_number);
-    let doc = T::get_html_doc(&full_url).await?;
+    let doc = T::get_html_doc(client, &full_url).await?;
 
     // HTML selectors
     let jobs_list_selector = T::get_selector("body>main>div>div>div>div>div>table>tbody>tr")?;
@@ -145,7 +150,7 @@ impl Scraper for CryptoJobsList {
     {
         let url = self.get_url();
         let full_url = format!("{url}/engineering?sort=recent");
-        let doc = Self::get_html_doc(&full_url).await?;
+        let doc = Self::get_html_doc(&Client::new(), &full_url).await?;
 
         // HTML selectors
         let jobs_list_selector = Self::get_selector("main>section>section>table>tbody>tr")?;
@@ -233,7 +238,7 @@ where
     let mut jobs = Vec::new();
     let url = t.get_url();
     let full_url = format!("{url}?filter={query_param}");
-    let doc = T::get_html_doc(&full_url).await?;
+    let doc = T::get_html_doc(&Client::new(), &full_url).await?;
 
     // HTML selectors
     let jobs_list_selector = T::get_selector("#content>div>div>div>div>div>div")?;
