@@ -75,10 +75,10 @@ generate_jobsite_struct_and_impl!(NearJobs, NEAR_JOBS_URL);
 
 impl Web3Careers {
     /// Formats an onclick function (as a &str) into a URL path string.
-    pub fn format_apply_path_from(a: &str) -> String {
+    pub fn format_apply_url_from(url: &str, a: &str) -> String {
         let v = a.split(' ').collect::<Vec<&str>>();
         match v.len() {
-            2 => v[1].replace(['\'', ')'], ""),
+            2 => format!("{}{}", url, v[1].replace(['\'', ')'], "")),
             _ => "".into(),
         }
     }
@@ -119,9 +119,13 @@ impl DateFormatter for CryptoJobsList {
 }
 
 pub trait Common {
-    /// Formats a raw path to a full url for common jobsite.
-    fn format_apply_path_from(url: &str, path_raw: &str) -> String {
-        format!("{}{}", url, path_raw).replacen("jobs/", "", 1)
+    /// Formats a raw path to a full url for a common jobsite.
+    fn format_apply_url_from(url: &str, path_raw: &str) -> String {
+        if path_raw.starts_with("https") {
+            path_raw.to_string()
+        } else {
+            format!("{}{}", url, path_raw).replacen("jobs/", "", 1)
+        }
     }
 }
 
