@@ -24,12 +24,9 @@ pub trait Site {
 }
 
 /// Website structs can implement the Formatter trait where needed.
-pub trait Formatter {
+pub trait DateFormatter {
     /// Formats a date from a given elapsed time string, e.g. "1 hour", "3 days", "today", "3d".
     fn format_date_from(time_elapsed: String) -> String;
-
-    /// Formats a remuneration string.
-    fn format_remuneration_from(r: String) -> String;
 
     /// Returns a formatted ("%Y-%m-%d") version of now minus a time duration.
     fn sub_duration_and_format(duration: Duration) -> String {
@@ -85,9 +82,25 @@ impl Web3Careers {
             _ => "".into(),
         }
     }
+
+    /// Formats a date.
+    pub fn format_date_from(date_raw: &str) -> String {
+        date_raw.split(' ').collect::<Vec<_>>()[0].to_string()
+    }
 }
 
-impl Formatter for CryptoJobsList {
+impl CryptoJobsList {
+    pub fn format_remuneration_from(mut r: String) -> String {
+        r = r.replace('$', "");
+        let rem_v = r.split('-').map(|s| s.trim()).collect::<Vec<&str>>();
+        match rem_v.len() {
+            2 => format!("${} - ${}", rem_v[0], rem_v[1]),
+            _ => "".into(),
+        }
+    }
+}
+
+impl DateFormatter for CryptoJobsList {
     fn format_date_from(time_elapsed: String) -> String {
         let v = time_elapsed.chars().collect::<Vec<char>>();
         match v.len() {
@@ -103,18 +116,14 @@ impl Formatter for CryptoJobsList {
             _ => Self::now_and_format(),
         }
     }
-
-    fn format_remuneration_from(mut r: String) -> String {
-        r = r.replace('$', "");
-        let rem_v = r.split('-').map(|s| s.trim()).collect::<Vec<&str>>();
-        match rem_v.len() {
-            2 => format!("${} - ${}", rem_v[0], rem_v[1]),
-            _ => "".into(),
-        }
-    }
 }
 
-pub trait Common {}
+pub trait Common {
+    /// Formats a raw path to a full url for common jobsite.
+    fn format_apply_path_from(url: &str, path_raw: &str) -> String {
+        format!("{}{}", url, path_raw).replacen("jobs/", "", 1)
+    }
+}
 
 impl Common for SolanaJobs {}
 impl Common for SubstrateJobs {}

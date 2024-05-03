@@ -1,6 +1,6 @@
 use crate::repository::Job;
 use crate::site::{
-    Common, CryptoJobsList, Formatter, NearJobs, Site, SolanaJobs, SubstrateJobs, Web3Careers,
+    Common, CryptoJobsList, DateFormatter, NearJobs, Site, SolanaJobs, SubstrateJobs, Web3Careers,
 };
 use reqwest::Client;
 use scraper::{ElementRef, Html, Selector};
@@ -128,8 +128,7 @@ where
             }
             if let Some(element) = el.select(&date_selector).next() {
                 if let Some(date_raw) = element.value().attr("datetime") {
-                    job.date_posted = date_raw.split(' ').collect::<Vec<_>>()[0].to_owned();
-                    // here
+                    job.date_posted = Web3Careers::format_date_from(date_raw);
                 }
             }
             if let Some(element) = el.select(&remuneration_selector).next() {
@@ -294,7 +293,7 @@ where
                     job.apply = if path_raw.starts_with("https") {
                         path_raw.to_string()
                     } else {
-                        format!("{}{}", url, path_raw).replacen("jobs/", "", 1) // here
+                        T::format_apply_path_from(url, path_raw)
                     };
                     println!("{}", job.apply);
                 }
