@@ -22,6 +22,23 @@ impl Job {
             ..Default::default()
         }
     }
+
+    fn title_contains(&self, pat: &str) -> bool {
+        self.title.to_lowercase().contains(pat)
+    }
+
+    fn title_contains_any(&self, v: Vec<&str>) -> bool {
+        for pat in v {
+            if self.title.to_lowercase().contains(pat) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn location_contains(&self, pat: &str) -> bool {
+        self.location.to_lowercase().contains(pat)
+    }
 }
 
 /// Pretty print Job for debug.
