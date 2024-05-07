@@ -182,11 +182,11 @@ impl Scraper for CryptoJobsList {
                 }
                 if let Some(element) = el.select(&date_selector).next() {
                     let date_raw = element.get_text();
-                    job.date_posted = CryptoJobsList::format_date_from(date_raw);
+                    job.date_posted = CryptoJobsList::format_date_from(&date_raw);
                 }
                 if let Some(element) = el.select(&remuneration_selector).next() {
                     let remuneration_raw = element.get_text();
-                    job.remuneration = CryptoJobsList::format_remuneration_from(remuneration_raw);
+                    job.remuneration = CryptoJobsList::format_remuneration_from(&remuneration_raw);
                 }
                 for tag_el in el.select(&tag_selector) {
                     job.tags

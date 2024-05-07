@@ -26,7 +26,7 @@ pub trait Site {
 /// Website structs can implement the Formatter trait where needed.
 pub trait DateFormatter {
     /// Formats a date from a given elapsed time string, e.g. "1 hour", "3 days", "today", "3d".
-    fn format_date_from(time_elapsed: String) -> String;
+    fn format_date_from(time_elapsed: &str) -> String;
 
     /// Returns a formatted ("%Y-%m-%d") version of now minus a time duration.
     fn sub_duration_and_format(duration: Duration) -> String {
@@ -79,7 +79,7 @@ impl Web3Careers {
         let v = a.split(' ').collect::<Vec<&str>>();
         match v.len() {
             2 => format!("{}{}", url, v[1].replace(['\'', ')'], "")),
-            _ => "".into(),
+            _ => "".to_string(),
         }
     }
 
@@ -90,18 +90,18 @@ impl Web3Careers {
 }
 
 impl CryptoJobsList {
-    pub fn format_remuneration_from(mut r: String) -> String {
-        r = r.replace('$', "");
+    pub fn format_remuneration_from(r: &str) -> String {
+        let r = r.replace('$', "");
         let rem_v = r.split('-').map(|s| s.trim()).collect::<Vec<&str>>();
         match rem_v.len() {
             2 => format!("${} - ${}", rem_v[0], rem_v[1]),
-            _ => "".into(),
+            _ => "".to_string(),
         }
     }
 }
 
 impl DateFormatter for CryptoJobsList {
-    fn format_date_from(time_elapsed: String) -> String {
+    fn format_date_from(time_elapsed: &str) -> String {
         let v = time_elapsed.chars().collect::<Vec<char>>();
         match v.len() {
             len if len >= 2 => {
@@ -132,3 +132,64 @@ pub trait Common {
 impl Common for SolanaJobs {}
 impl Common for SubstrateJobs {}
 impl Common for NearJobs {}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Duration;
+
+    use crate::site::{Common, CryptoJobsList, DateFormatter, SolanaJobs, Web3Careers};
+
+    #[test]
+    fn test_web3careers_format_apply_url() {
+        assert_eq!(
+            Web3Careers::format_apply_url_from(
+                "https://web3.career",
+                "tableTurboRowClick(event, '/full-stack-ai-blockchain-systems-engineer-nodeai/66176')"
+            ),
+            "https://web3.career/full-stack-ai-blockchain-systems-engineer-nodeai/66176"
+        );
+    }
+
+    #[test]
+    fn test_web3careers_format_date() {
+        assert_eq!(
+            Web3Careers::format_date_from("2024-05-06 12:05:50+07:00"),
+            "2024-05-06"
+        );
+    }
+
+    #[test]
+    fn test_crypto_jobs_list_format_remuneration() {
+        assert_eq!(
+            CryptoJobsList::format_remuneration_from("$ 90k-140k"),
+            "$90k - $140k"
+        );
+    }
+
+    #[test]
+    fn test_crypto_jobs_list_format_date() {
+        assert_eq!(
+            CryptoJobsList::format_date_from("today"),
+            CryptoJobsList::now_and_format()
+        );
+        assert_eq!(
+            CryptoJobsList::format_date_from("1d"),
+            CryptoJobsList::sub_duration_and_format(Duration::days(1))
+        );
+        assert_eq!(
+            CryptoJobsList::format_date_from("2w"),
+            CryptoJobsList::sub_duration_and_format(Duration::weeks(2))
+        );
+    }
+
+    #[test]
+    fn test_common_format_apply_url() {
+        assert_eq!(
+            SolanaJobs::format_apply_url_from(
+                "https://jobs.solana.com/jobs",
+                "/companies/solana-foundation-2/jobs/36564322-lead-software-engineer-payments-commerce#content"
+            ),
+            "https://jobs.solana.com/companies/solana-foundation-2/jobs/36564322-lead-software-engineer-payments-commerce#content"
+        );
+    }
+}
