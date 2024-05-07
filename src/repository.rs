@@ -89,3 +89,26 @@ impl Debug for Job {
         )
     }
 }
+
+/// All repository builder structs must implement the Builder trait for some repository
+/// type Output. This provides the basic ETL operations.
+pub trait JobsDbBuilder {
+    /// The Output type for the builder.
+    type Output;
+    type Error;
+
+    /// Initialises the repository with default fields.
+    fn new() -> Self;
+
+    /// Takes a vector of Job vectors (one per website scraped) and imports all Jobs into the
+    /// repository.
+    fn import(self, jobs: Vec<Vec<Job>>) -> Result<Self, Self::Error>
+    where
+        Self: Sized;
+
+    /// An optional filter to include only jobs of interest.
+    fn filter<F: Fn(&Job) -> bool>(self, condition: F) -> Self;
+
+    /// Adds jobs to the SQLite database.
+    fn add_jobs_to_db(self) -> Result<Self::Output, Self::Error>;
+}
