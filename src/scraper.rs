@@ -293,3 +293,72 @@ pub enum Error {
     #[error("Error decoding HTML. {0}")]
     Decode(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use regex::Regex;
+
+    use crate::repository::Job;
+    use crate::site::{
+        CryptoJobsList, NearJobs, Site, SolanaJobs, SubstrateJobs, Web3Careers,
+        CRYPTO_JOBS_LIST_URL, NEAR_JOBS_URL, SOLANA_JOBS_URL, SUBSTRATE_JOBS_URL, WEB3_CAREERS_URL,
+    };
+
+    use super::Scraper;
+
+    const DATE_REGEX: &str = r"(\d{4})-(\d{2})-(\d{2})( (\d{2}):(\d{2}):(\d{2}))?";
+
+    #[tokio::test]
+    async fn test_scrape_web3careers() {
+        let jobs = Web3Careers::new().scrape().await.unwrap().jobs;
+        assert_eq!(jobs[0].site, WEB3_CAREERS_URL);
+        job_assertions(jobs)
+    }
+
+    #[tokio::test]
+    async fn test_scrape_crypto_jobs_list() {
+        let jobs = CryptoJobsList::new().scrape().await.unwrap().jobs;
+        assert_eq!(jobs[0].site, CRYPTO_JOBS_LIST_URL);
+        job_assertions(jobs)
+    }
+
+    #[tokio::test]
+    async fn test_scrape_solana_jobs() {
+        let jobs = SolanaJobs::new().scrape().await.unwrap().jobs;
+        assert_eq!(jobs[0].site, SOLANA_JOBS_URL);
+        job_assertions(jobs)
+    }
+
+    #[tokio::test]
+    async fn test_scrape_substrate_jobs() {
+        let jobs = SubstrateJobs::new().scrape().await.unwrap().jobs;
+        assert_eq!(jobs[0].site, SUBSTRATE_JOBS_URL);
+        job_assertions(jobs)
+    }
+
+    #[tokio::test]
+    async fn test_scrape_near_jobs() {
+        let jobs = NearJobs::new().scrape().await.unwrap().jobs;
+        assert_eq!(jobs[0].site, NEAR_JOBS_URL);
+        job_assertions(jobs)
+    }
+
+    fn job_assertions(jobs: Vec<Job>) {
+        assert!(jobs.len() > 0);
+        for job in &jobs {
+            assert!(!job.title.is_empty());
+            assert!(!job.company.is_empty());
+            assert!(Regex::new(DATE_REGEX).unwrap().is_match(&job.date_posted));
+            assert!(
+                job.remuneration.to_lowercase().contains("k")
+                    && job.remuneration.to_lowercase().contains("$")
+                    || job.remuneration.is_empty()
+            );
+            assert!(
+                job.apply.starts_with("https")
+                    || job.apply.starts_with("mailto")
+                    || job.apply.is_empty()
+            )
+        }
+    }
+}
