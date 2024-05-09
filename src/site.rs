@@ -91,11 +91,20 @@ impl Web3Careers {
 
 impl CryptoJobsList {
     pub fn format_remuneration_from(r: &str) -> String {
-        let r = r.replace('$', "");
-        let rem_v = r.split('-').map(|s| s.trim()).collect::<Vec<&str>>();
-        match rem_v.len() {
-            2 => format!("${} - ${}", rem_v[0], rem_v[1]),
-            _ => "".to_string(),
+        if r.starts_with("EUR") {
+            let r = r.replace("EUR", "");
+            let rem_v = r.split('-').map(|s| s.trim()).collect::<Vec<&str>>();
+            match rem_v.len() {
+                2 => format!("€{} - €{}", rem_v[0], rem_v[1]),
+                _ => "".to_string(),
+            }
+        } else {
+            let r = r.replace('$', "");
+            let rem_v = r.split('-').map(|s| s.trim()).collect::<Vec<&str>>();
+            match rem_v.len() {
+                2 => format!("${} - ${}", rem_v[0], rem_v[1]),
+                _ => "".to_string(),
+            }
         }
     }
 }
@@ -163,6 +172,10 @@ mod tests {
         assert_eq!(
             CryptoJobsList::format_remuneration_from("$ 90k-140k"),
             "$90k - $140k"
+        );
+        assert_eq!(
+            CryptoJobsList::format_remuneration_from("EUR 90k-140k"),
+            "€90k - €140k"
         );
     }
 
