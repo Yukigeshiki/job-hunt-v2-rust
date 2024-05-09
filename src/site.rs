@@ -1,5 +1,6 @@
-use crate::repository::Job;
 use chrono::{Duration, Local};
+
+use crate::repository::Job;
 
 /// Job site URLs used for scraping.
 pub const WEB3_CAREERS_URL: &str = "https://web3.career";
@@ -153,7 +154,7 @@ mod tests {
         assert_eq!(
             Web3Careers::format_apply_url_from(
                 "https://web3.career",
-                "tableTurboRowClick(event, '/full-stack-ai-blockchain-systems-engineer-nodeai/66176')"
+                "tableTurboRowClick(event, '/full-stack-ai-blockchain-systems-engineer-nodeai/66176')",
             ),
             "https://web3.career/full-stack-ai-blockchain-systems-engineer-nodeai/66176"
         );
@@ -200,7 +201,7 @@ mod tests {
         assert_eq!(
             SolanaJobs::format_apply_url_from(
                 "https://jobs.solana.com/jobs",
-                "/companies/solana-foundation-2/jobs/36564322-lead-software-engineer-payments-commerce#content"
+                "/companies/solana-foundation-2/jobs/36564322-lead-software-engineer-payments-commerce#content",
             ),
             "https://jobs.solana.com/companies/solana-foundation-2/jobs/36564322-lead-software-engineer-payments-commerce#content"
         );

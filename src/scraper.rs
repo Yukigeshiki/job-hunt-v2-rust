@@ -1,12 +1,12 @@
 use reqwest::header::USER_AGENT;
 use reqwest::Client;
 use scraper::{ElementRef, Html, Selector};
-use thiserror::Error;
 
 use crate::repository::Job;
 use crate::site::{
     Common, CryptoJobsList, DateFormatter, NearJobs, Site, SolanaJobs, SubstrateJobs, Web3Careers,
 };
+use crate::ErrorKind;
 
 /// All jobsite structs must implement the Scraper trait.
 #[allow(async_fn_in_trait)]
@@ -26,12 +26,12 @@ pub trait Scraper {
     /// }
     /// ```
     /// as defined in repository module.
-    async fn scrape(self) -> Result<Self, Error>
+    async fn scrape(self) -> Result<Self, ErrorKind>
     where
         Self: Sized;
 
     /// Gets an HTML doc for a jobsite.
-    async fn get_html_doc(client: &Client, url_full: &str) -> Result<Html, Error> {
+    async fn get_html_doc(client: &Client, url_full: &str) -> Result<Html, ErrorKind> {
         let res = client
             .get(url_full)
             .header(
@@ -40,21 +40,24 @@ pub trait Scraper {
             )
             .send()
             .await
-            .map_err(|e| Error::Request(url_full.to_string(), e.to_string()))?;
+            .map_err(|e| ErrorKind::Request(url_full.to_string(), e.to_string()))?;
         if !res.status().is_success() {
-            Err(Error::Request(
+            Err(ErrorKind::Request(
                 url_full.to_string(),
                 format!("Request failed with code {}", res.status().as_u16()),
             ))?;
         }
-        let body = res.text().await.map_err(|e| Error::Decode(e.to_string()))?;
+        let body = res
+            .text()
+            .await
+            .map_err(|e| ErrorKind::Decode(e.to_string()))?;
         let doc = Html::parse_document(&body);
         Ok(doc)
     }
 
     /// Gets a selector for a specific HTML element.
-    fn get_selector(selectors: &str) -> Result<Selector, Error> {
-        Selector::parse(selectors).map_err(|e| Error::Selector(e.to_string()))
+    fn get_selector(selectors: &str) -> Result<Selector, ErrorKind> {
+        Selector::parse(selectors).map_err(|e| ErrorKind::Selector(e.to_string()))
     }
 }
 
@@ -68,9 +71,28 @@ impl GetText for ElementRef<'_> {
     }
 }
 
+impl Scraper for Web3Careers {
+    async fn scrape(mut self) -> Result<Self, ErrorKind>
+    where
+        Self: Sized,
+    {
+        let client = Client::new();
+        let url = self.get_url();
+        for i in 1..6 {
+            let mut jobs = Self::_scrape(url, &client, i).await?;
+            self.jobs.append(&mut jobs);
+        }
+        Ok(self)
+    }
+}
+
 impl Web3Careers {
     /// Used to scrape web3careers jobsite for a specific page number.
-    async fn _scrape(url: &'static str, client: &Client, page_number: u8) -> Result<Vec<Job>, Error>
+    async fn _scrape(
+        url: &'static str,
+        client: &Client,
+        page_number: u8,
+    ) -> Result<Vec<Job>, ErrorKind>
     where
         Self: Scraper + Site,
     {
@@ -132,23 +154,8 @@ impl Web3Careers {
     }
 }
 
-impl Scraper for Web3Careers {
-    async fn scrape(mut self) -> Result<Self, Error>
-    where
-        Self: Sized,
-    {
-        let client = Client::new();
-        let url = self.get_url();
-        for i in 1..6 {
-            let mut jobs = Self::_scrape(url, &client, i).await?;
-            self.jobs.append(&mut jobs);
-        }
-        Ok(self)
-    }
-}
-
 impl Scraper for CryptoJobsList {
-    async fn scrape(mut self) -> Result<Self, Error>
+    async fn scrape(mut self) -> Result<Self, ErrorKind>
     where
         Self: Sized,
     {
@@ -189,7 +196,6 @@ impl Scraper for CryptoJobsList {
                 if let Some(element) = el.select(&remuneration_selector).next() {
                     let remuneration_raw = element.get_text();
                     job.remuneration = CryptoJobsList::format_remuneration_from(&remuneration_raw);
-                    println!("{}", job.remuneration);
                 }
                 for tag_el in el.select(&tag_selector) {
                     job.tags
@@ -211,7 +217,7 @@ impl Scraper for CryptoJobsList {
 macro_rules! impl_scraper_for_common {
     ($t:ident, $qp:expr) => {
         impl Scraper for $t {
-            async fn scrape(mut self) -> Result<Self, Error>
+            async fn scrape(mut self) -> Result<Self, ErrorKind>
             where
                 Self: Sized,
             {
@@ -282,18 +288,6 @@ impl_scraper_for_common!(
     NearJobs,
     "eyJqb2JfZnVuY3Rpb25zIjpbIlNvZnR3YXJlIEVuZ2luZWVyaW5nIl19"
 );
-
-#[derive(Error, Debug)]
-pub enum Error {
-    #[error("Selector error: {0}")]
-    Selector(String),
-
-    #[error("Error making request to '{0}'. {1}")]
-    Request(String, String),
-
-    #[error("Error decoding HTML. {0}")]
-    Decode(String),
-}
 
 #[cfg(test)]
 mod tests {

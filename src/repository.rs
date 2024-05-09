@@ -1,5 +1,11 @@
-use colored::Colorize;
 use std::fmt::{Debug, Formatter};
+
+use colored::Colorize;
+use rusqlite::Connection;
+
+use crate::scraper::Scraper;
+use crate::site::{CryptoJobsList, NearJobs, Site, SolanaJobs, SubstrateJobs, Web3Careers};
+use crate::ErrorKind;
 
 const NOT_AVAILABLE: &str = "Not available";
 
@@ -23,10 +29,6 @@ impl Job {
         }
     }
 
-    fn title_contains(&self, pat: &str) -> bool {
-        self.title.to_lowercase().contains(pat)
-    }
-
     fn title_contains_any(&self, v: Vec<&str>) -> bool {
         for pat in v {
             if self.title.to_lowercase().contains(pat) {
@@ -34,10 +36,6 @@ impl Job {
             }
         }
         false
-    }
-
-    fn location_contains(&self, pat: &str) -> bool {
-        self.location.to_lowercase().contains(pat)
     }
 }
 
@@ -57,7 +55,7 @@ impl Debug for Job {
         let tags = if !self.tags.is_empty() {
             format!("[ {} ]", self.tags.join(", "))
         } else {
-            NOT_AVAILABLE.into()
+            NOT_AVAILABLE.to_string()
         };
         let apply = if self.apply.is_empty() {
             NOT_AVAILABLE.green()
@@ -90,25 +88,135 @@ impl Debug for Job {
     }
 }
 
-/// All repository builder structs must implement the Builder trait for some repository
-/// type Output. This provides the basic ETL operations.
+/// All jobs structs must implement the JobsDbBuilder trait. This will provide the basic ETL operations.
 pub trait JobsDbBuilder {
-    /// The Output type for the builder.
-    type Output;
+    /// The Error type for the builder.
     type Error;
 
-    /// Initialises the repository with default fields.
+    /// Initialises the jobs struct with default fields.
     fn new() -> Self;
 
-    /// Takes a vector of Job vectors (one per website scraped) and imports all Jobs into the
-    /// repository.
-    fn import(self, jobs: Vec<Vec<Job>>) -> Result<Self, Self::Error>
+    /// Takes a vector of Job vectors (one per jobsite scraped) and imports all Jobs into the
+    /// jobs struct.
+    fn import(self, job_vecs: Vec<Vec<Job>>) -> Self
     where
         Self: Sized;
 
     /// An optional filter to include only jobs of interest.
-    fn filter<F: Fn(&Job) -> bool>(self, condition: F) -> Self;
+    fn filter<F>(self, condition: F) -> Self
+    where
+        F: Fn(&Job) -> bool;
 
-    /// Adds jobs to the SQLite database.
-    fn add_jobs_to_db(self) -> Result<Self::Output, Self::Error>;
+    /// Adds jobs to the SQLite database. This is the completing method.
+    fn add_to_db(self) -> Result<(), Self::Error>;
+}
+
+/// Type alias for a job vector.
+type Jobs = Vec<Job>;
+
+/// Represents a jobs struct for software jobs. A jobs struct for any job type can be
+/// created to implement the JobsDbBuilder trait.
+pub struct SoftwareJobs(Jobs);
+
+impl SoftwareJobs {
+    pub async fn init() -> Result<(), ErrorKind> {
+        let web3_careers = Web3Careers::new().scrape().await?.jobs;
+        let crypto_jobs_list = CryptoJobsList::new().scrape().await?.jobs;
+        let solana_jobs = SolanaJobs::new().scrape().await?.jobs;
+        let substrate_jobs = SubstrateJobs::new().scrape().await?.jobs;
+        let near_jobs = NearJobs::new().scrape().await?.jobs;
+
+        SoftwareJobs::new()
+            .import(vec![
+                web3_careers,
+                crypto_jobs_list,
+                solana_jobs,
+                substrate_jobs,
+                near_jobs,
+            ])
+            .filter(|job| {
+                job.title_contains_any(vec!["developer", "engineer", "engineering", "technical"])
+            }) // optional filter - in this case filter on engineering jobs
+            .add_to_db()?;
+
+        Ok(())
+    }
+}
+
+impl JobsDbBuilder for SoftwareJobs {
+    type Error = ErrorKind;
+
+    fn new() -> Self {
+        Self(Default::default())
+    }
+
+    fn import(mut self, job_vecs: Vec<Vec<Job>>) -> Self
+    where
+        Self: Sized,
+    {
+        for vec in job_vecs {
+            self.0.extend(vec)
+        }
+        self
+    }
+
+    fn filter<F>(mut self, condition: F) -> Self
+    where
+        F: Fn(&Job) -> bool,
+    {
+        self.0.retain(|job| condition(job));
+        self
+    }
+
+    fn add_to_db(self) -> Result<(), Self::Error> {
+        let conn =
+            Connection::open("jobs.db").map_err(|e| ErrorKind::SqliteConnection(e.to_string()))?;
+        conn.execute("drop table if exists job", ())
+            .map_err(|e| ErrorKind::SqliteQuery(e.to_string()))?;
+        conn.execute(
+            "create table job (
+                id integer primary key,
+                title text not null,
+                company text not null,
+                date_posted date not null,
+                location text,
+                remuneration text,
+                tags json,
+                apply text not null,
+                site text not null
+            )",
+            (),
+        )
+        .map_err(|e| ErrorKind::SqliteQuery(e.to_string()))?;
+
+        for job in &self.0 {
+            let tags = serde_json::to_string(&job.tags)
+                .map_err(|e| ErrorKind::Serialisation(e.to_string()))?;
+            conn.execute(
+                "insert into job (
+                 title,
+                 company,
+                 date_posted,
+                 location,
+                 remuneration,
+                 tags,
+                 apply,
+                 site
+            ) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                [
+                    &job.title,
+                    &job.company,
+                    &job.date_posted,
+                    &job.location,
+                    &job.remuneration,
+                    &tags,
+                    &job.apply,
+                    job.site,
+                ],
+            )
+            .map_err(|e| ErrorKind::SqliteQuery(e.to_string()))?;
+        }
+
+        Ok(())
+    }
 }
