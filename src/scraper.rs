@@ -167,7 +167,8 @@ impl Scraper for CryptoJobsList {
         let jobs_list_selector = Self::get_selector("main>section>section>table>tbody>tr")?;
         let title_selector = Self::get_selector("main>section>section>table>tbody>tr>td>div>a")?;
         let company_selector = Self::get_selector("main>section>section>table>tbody>tr>td>a")?;
-        let location_selector = Self::get_selector("main>section>section>table>tbody>tr>td>span")?;
+        let location_selector =
+            Self::get_selector("main>section>section>table>tbody>tr>td:nth-child(5)>span")?;
         let date_selector =
             Self::get_selector("main>section>section>table>tbody>tr>td.job-time-since-creation")?;
         let remuneration_selector =
