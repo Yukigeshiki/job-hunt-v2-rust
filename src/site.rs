@@ -13,7 +13,7 @@ pub const NEAR_JOBS_URL: &str = "https://careers.near.org/jobs";
 /// ```
 /// pub struct Jobsite {
 ///    url: &'static str,
-///    pub jobs: Vec<job_hunt::repository::Job>,
+///    pub jobs: Vec<jobhunt::repository::Job>,
 /// }
 /// ```
 pub trait Site {

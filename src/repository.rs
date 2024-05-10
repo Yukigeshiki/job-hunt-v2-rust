@@ -119,7 +119,7 @@ type Jobs = Vec<Job>;
 pub struct SoftwareJobs(Jobs);
 
 impl SoftwareJobs {
-    pub async fn init() -> Result<(), ErrorKind> {
+    pub async fn init_repo() -> Result<(), ErrorKind> {
         let web3_careers = Web3Careers::new().scrape().await?.jobs;
         let crypto_jobs_list = CryptoJobsList::new().scrape().await?.jobs;
         let solana_jobs = SolanaJobs::new().scrape().await?.jobs;

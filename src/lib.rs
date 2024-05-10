@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+pub mod repl;
 pub mod repository;
 pub mod scraper;
 pub mod site;
@@ -21,6 +22,9 @@ pub enum ErrorKind {
     #[error("Error querying DB. {0}")]
     SqliteQuery(String),
 
-    #[error("Failed to serialise/deserialise tags array: {0}")]
+    #[error("Error serialising/deserialising tags array: {0}")]
     Serialisation(String),
+
+    #[error("Error: {0}")]
+    Repl(String),
 }

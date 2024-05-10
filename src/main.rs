@@ -1,6 +1,9 @@
-use job_hunt::repository::SoftwareJobs;
+use jobhunt::repl::Repl;
+use jobhunt::repository::SoftwareJobs;
 
 #[tokio::main]
 async fn main() {
-    SoftwareJobs::init().await.unwrap();
+    SoftwareJobs::init_repl()
+        .await
+        .expect("Something went wrong!");
 }
