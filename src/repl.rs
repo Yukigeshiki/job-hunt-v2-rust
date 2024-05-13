@@ -1,10 +1,11 @@
 use chrono::Local;
 use colored::Colorize;
+use rusqlite::Connection;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 
-use crate::repository::SoftwareJobs;
-use crate::ErrorKind;
+use crate::repository::{Job, SoftwareJobs};
+use crate::{green_println, red_println, ErrorKind};
 
 /// This trait must be implemented by the specific job repo struct to be used in Job Hunt (e.g. SoftwareJobs).
 #[allow(async_fn_in_trait)]
@@ -12,25 +13,51 @@ pub trait Repl {
     /// Initializes a repository for the job repo type that is implementing this trait; then
     /// initializes the REPL and parses queries.
     async fn init_repl() -> Result<(), ErrorKind>;
-}
 
-macro_rules! printreplln {
-    ($msg:expr) => {{
-        println!("{}", $msg.bold().green())
-    }};
+    fn select_and_display_jobs(conn: Connection, l: String) -> Result<(), ErrorKind> {
+        let query = l.replace("select jobs", "select * from jobs");
+        let mut stmt = conn
+            .prepare(&query)
+            .map_err(|e| ErrorKind::SqliteQuery(e.to_string()))?;
+
+        let jobs = stmt
+            .query_map((), |row| {
+                let tags: String = row.get(6).unwrap();
+                let tags: Vec<String> = serde_json::from_str(&tags).unwrap();
+                Ok(Job {
+                    title: row.get(1)?,
+                    company: row.get(2)?,
+                    date_posted: row.get(3)?,
+                    location: row.get(4)?,
+                    remuneration: row.get(5)?,
+                    tags,
+                    apply: row.get(7)?,
+                    site: row.get(8)?,
+                })
+            })
+            .map_err(|e| ErrorKind::SqliteQuery(e.to_string()))?;
+
+        let mut cnt = 0;
+        for job in jobs {
+            let job = job.map_err(|e| ErrorKind::SqliteQuery(e.to_string()))?;
+            println!("{:?}", job);
+            cnt += 1
+        }
+        green_println!(format!("{cnt} jobs returned."));
+
+        Ok(())
+    }
 }
 
 impl Repl for SoftwareJobs {
     async fn init_repl() -> Result<(), ErrorKind> {
         let mut rl = DefaultEditor::new().map_err(|e| ErrorKind::Repl(e.to_string()))?;
-        rl.load_history(".jobhunthistory")
-            .map_err(|e| ErrorKind::Repl(e.to_string()))?;
-
-        printreplln!("Populating local database. This shouldn't take long...");
+        green_println!("Populating local database. This shouldn't take long...");
         Self::init_repo().await?;
-        printreplln!(
+        green_println!(
             "Population completed successfully! Welcome, please begin your job hunt by entering a query."
         );
+        rl.load_history(".jobhunthistory").ok();
 
         loop {
             let readline = rl.readline(">> ");
@@ -42,21 +69,23 @@ impl Repl for SoftwareJobs {
 
                     match () {
                         () if l.starts_with("select jobs") => {
-                            // fetch and display jobs
-
-                            printreplln!(format!("{} jobs returned.", 5));
+                            let conn = Connection::open("jobs.db")
+                                .map_err(|e| ErrorKind::SqliteConnection(e.to_string()))?;
+                            if let Err(err) = Self::select_and_display_jobs(conn, l) {
+                                red_println!(err.to_string())
+                            }
                         }
                         () if l == "refresh" => {
-                            printreplln!("Refreshing local database...");
+                            green_println!("Refreshing local database...");
                             Self::init_repo().await?;
-                            printreplln!(format!(
+                            green_println!(format!(
                                 "Refresh completed successfully at {}",
                                 Local::now().format("%d-%m-%Y %H:%M:%S")
                             ))
                         }
                         () if l == "exit" => break,
                         () => {
-                            printreplln!(format!(
+                            red_println!(format!(
                                 "Does not compute! 🤖 \"{l}\" is not a valid query/command.",
                             ))
                         }
@@ -71,13 +100,13 @@ impl Repl for SoftwareJobs {
                     break;
                 }
                 Err(err) => {
-                    printreplln!(format!("An error has occurred: {err}"));
+                    red_println!(format!("An error has occurred: {err}"));
                     break;
                 }
             }
         }
 
-        printreplln!("Thank you for using Job Hunt. Goodbye!");
+        green_println!("Thank you for using Job Hunt. Goodbye!");
         rl.save_history(".jobhunthistory")
             .map_err(|e| ErrorKind::Repl(e.to_string()))?;
 

@@ -118,7 +118,7 @@ impl Web3Careers {
 
         for el in doc.select(&jobs_list_selector) {
             let mut job = Job::new();
-            job.site = url;
+            job.site = url.to_string();
 
             if let Some(element) = el.select(&title_selector).next() {
                 job.title = element.get_text();
@@ -177,7 +177,7 @@ impl Scraper for CryptoJobsList {
 
         for el in doc.select(&jobs_list_selector) {
             let mut job = Job::new();
-            job.site = url;
+            job.site = url.to_string();
 
             if let Some(element) = el.select(&title_selector).next() {
                 job.title = element.get_text();
@@ -244,7 +244,7 @@ macro_rules! impl_scraper_for_common {
 
                 for el in doc.select(&jobs_list_selector) {
                     let mut job = Job::new();
-                    job.site = url;
+                    job.site = url.to_string();
 
                     if let Some(element) = el.select(&title_selector).next() {
                         job.title = element.get_text();

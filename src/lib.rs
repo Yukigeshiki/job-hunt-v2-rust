@@ -5,6 +5,20 @@ pub mod repository;
 pub mod scraper;
 pub mod site;
 
+#[macro_export]
+macro_rules! green_println {
+    ($msg:expr) => {{
+        println!("{}", $msg.bold().green())
+    }};
+}
+
+#[macro_export]
+macro_rules! red_println {
+    ($msg:expr) => {{
+        println!("{}", $msg.bold().red())
+    }};
+}
+
 #[derive(Error, Debug)]
 pub enum ErrorKind {
     #[error("Error retrieving selector group. {0}")]
@@ -25,6 +39,6 @@ pub enum ErrorKind {
     #[error("Error serialising/deserialising tags array: {0}")]
     Serialisation(String),
 
-    #[error("Error: {0}")]
+    #[error("Error initialising REPL: {0}")]
     Repl(String),
 }

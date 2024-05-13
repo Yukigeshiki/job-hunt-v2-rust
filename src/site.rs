@@ -140,7 +140,9 @@ pub trait Common {
 }
 
 impl Common for SolanaJobs {}
+
 impl Common for SubstrateJobs {}
+
 impl Common for NearJobs {}
 
 #[cfg(test)]

@@ -19,7 +19,7 @@ pub struct Job {
     pub remuneration: String,
     pub tags: Vec<String>,
     pub apply: String,
-    pub site: &'static str,
+    pub site: String,
 }
 
 impl Job {
@@ -64,7 +64,7 @@ impl Debug for Job {
         };
         write!(
             f,
-            "{} {}\n{} {}\n{} {}\n{} {}\n{} {}\n{} {}\n{} {}\n{} {}\n\n{}",
+            "{} {}\n{} {}\n{} {}\n{} {}\n{} {}\n{} {}\n{} {}\n{} {}\n{}",
             "Position:".bold().bright_green(),
             self.title.green(),
             "Company:".bold().bright_green(),
@@ -82,7 +82,7 @@ impl Debug for Job {
             "Site:".bold().bright_green(),
             self.site.bright_blue(),
             "+-----------------------------------------------------------------------------------\
-            ---------------------------------+\n"
+            ---------------------------------+"
                 .green()
         )
     }
@@ -171,10 +171,10 @@ impl JobsDbBuilder for SoftwareJobs {
     fn add_to_db(self) -> Result<(), Self::Error> {
         let conn =
             Connection::open("jobs.db").map_err(|e| ErrorKind::SqliteConnection(e.to_string()))?;
-        conn.execute("drop table if exists job", ())
+        conn.execute("drop table if exists jobs", ())
             .map_err(|e| ErrorKind::SqliteQuery(e.to_string()))?;
         conn.execute(
-            "create table job (
+            "create table jobs (
                 id integer primary key,
                 title text not null,
                 company text not null,
@@ -193,7 +193,7 @@ impl JobsDbBuilder for SoftwareJobs {
             let tags = serde_json::to_string(&job.tags)
                 .map_err(|e| ErrorKind::Serialisation(e.to_string()))?;
             conn.execute(
-                "insert into job (
+                "insert into jobs (
                  title,
                  company,
                  date_posted,
@@ -211,7 +211,7 @@ impl JobsDbBuilder for SoftwareJobs {
                     &job.remuneration,
                     &tags,
                     &job.apply,
-                    job.site,
+                    &job.site,
                 ],
             )
             .map_err(|e| ErrorKind::SqliteQuery(e.to_string()))?;
