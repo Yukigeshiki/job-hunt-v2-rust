@@ -1,11 +1,24 @@
 # job-hunt-v2-rust
 
-A locally run recent job aggregator written in Rust, with a SQLite database, and REPL. Jobs are scraped from job sites and added to the database at start-up and then each time the application is refreshed.
+A locally run recent job aggregator written in Rust, with a SQLite database, and REPL. Jobs are scraped from job sites and added to the database at start-up and then each time the database is refreshed.
 
 To query jobs you use simplified SQLite syntax. For example, to fetch all senior jobs and order them by date posted you would enter:
 
 ```SQL
 select jobs where title like "%senior%" order by date_posted;
+```
+
+Table fields for querying include:
+
+```
+title text not null
+company text not null
+date_posted date not null
+location text
+remuneration text
+tags json
+apply text not null
+site text not null
 ```
 
 To refresh the database enter:
@@ -20,7 +33,7 @@ And to exit you can use `CTRL-C` or enter:
 exit
 ```
 
-There are currently scrapers for a number of Web3 job sites. I will be adding others sites in the future too. Sites included at the moment:
+There are currently scrapers for a number of Web3 job sites. I will be adding other sites in the future too. Sites included at the moment:
 - https://web3.career/
 - https://cryptojobslist.com/
 - https://jobs.solana.com/jobs
