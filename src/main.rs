@@ -8,6 +8,5 @@ use jobhunt::repository::SoftwareJobs;
 async fn main() {
     if let Err(err) = SoftwareJobs::init_repl().await {
         red_println!(err.to_string());
-        panic!()
     }
 }
