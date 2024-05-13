@@ -65,7 +65,7 @@ impl Debug for Job {
         write!(
             f,
             "{} {}\n{} {}\n{} {}\n{} {}\n{} {}\n{} {}\n{} {}\n{} {}\n{}",
-            "Position:".bold().bright_green(),
+            "Title:".bold().bright_green(),
             self.title.green(),
             "Company:".bold().bright_green(),
             self.company.green(),
