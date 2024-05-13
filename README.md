@@ -51,3 +51,5 @@ Population completed successfully! Welcome, please begin your job hunt by enteri
 ```
 
 This project is usable but still under Construction! 🚧
+
+<img src="Screenshot.png" width="800"/>
