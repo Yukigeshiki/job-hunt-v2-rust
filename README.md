@@ -1,5 +1,7 @@
 # job-hunt-v2-rust
 
+[![build](https://github.com/Yukigeshiki/job-hunt-v2-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/Yukigeshiki/job-hunt-v2-rust/actions/workflows/ci.yml)
+
 A locally run recent job aggregator written in Rust, with a SQLite database, and REPL. Jobs are scraped from job sites and added to the database at start-up and then each time the database is refreshed.
 
 To query jobs you use simplified SQLite syntax. For example, to fetch all senior jobs and order them by date posted you would enter:
