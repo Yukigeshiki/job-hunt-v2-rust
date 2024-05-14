@@ -10,7 +10,7 @@ use crate::ErrorKind;
 const NOT_AVAILABLE: &str = "Not available";
 
 /// The Job struct is the repository primitive.
-#[derive(Default)]
+#[derive(Default, Clone, Eq, Hash, PartialEq)]
 pub struct Job {
     pub title: String,
     pub company: String,

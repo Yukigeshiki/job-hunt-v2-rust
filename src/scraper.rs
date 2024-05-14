@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use regex::Regex;
 use reqwest::header::USER_AGENT;
 use reqwest::Client;
@@ -85,6 +86,7 @@ impl Scraper for Web3Careers {
             let mut jobs = Self::_scrape(url, &client, i).await?;
             self.jobs.append(&mut jobs);
         }
+        self.jobs = self.jobs.into_iter().unique().collect();
         Ok(self)
     }
 }
@@ -154,7 +156,7 @@ impl Web3Careers {
                 jobs.push(job);
             }
         }
-
+        jobs = jobs.into_iter().unique().collect();
         Ok(jobs)
     }
 }
@@ -214,7 +216,7 @@ impl Scraper for CryptoJobsList {
                 self.jobs.push(job);
             }
         }
-
+        self.jobs = self.jobs.into_iter().unique().collect();
         Ok(self)
     }
 }
@@ -275,7 +277,7 @@ macro_rules! impl_scraper_for_common {
                         self.jobs.push(job);
                     }
                 }
-
+                self.jobs = self.jobs.into_iter().unique().collect();
                 Ok(self)
             }
         }

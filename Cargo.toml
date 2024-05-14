@@ -17,5 +17,6 @@ colored = "2.0.0"
 rusqlite = { version = "0.31.0", features = ["bundled"] }
 rustyline = "14.0.0"
 regex = "1.10.4"
+itertools = "0.12.1"
 
 [dev-dependencies]
