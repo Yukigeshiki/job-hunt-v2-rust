@@ -1,3 +1,4 @@
+use regex::Regex;
 use reqwest::header::USER_AGENT;
 use reqwest::Client;
 use scraper::{ElementRef, Html, Selector};
@@ -7,6 +8,8 @@ use crate::site::{
     Common, CryptoJobsList, DateFormatter, NearJobs, Site, SolanaJobs, SubstrateJobs, Web3Careers,
 };
 use crate::ErrorKind;
+
+const REM_REGEX: &str = r"(\$|€)(\d)+k - (\$|€)(\d)+k";
 
 /// All jobsite structs must implement the Scraper trait.
 #[allow(async_fn_in_trait)]
@@ -138,7 +141,9 @@ impl Web3Careers {
                 }
                 if let Some(element) = el.select(&remuneration_selector).next() {
                     let remuneration = element.get_text();
-                    if !remuneration.is_empty() {
+                    if !remuneration.is_empty()
+                        && Regex::new(REM_REGEX).unwrap().is_match(&remuneration)
+                    {
                         job.remuneration = remuneration;
                     }
                 }
@@ -300,10 +305,9 @@ mod tests {
         CRYPTO_JOBS_LIST_URL, NEAR_JOBS_URL, SOLANA_JOBS_URL, SUBSTRATE_JOBS_URL, WEB3_CAREERS_URL,
     };
 
-    use super::Scraper;
+    use super::{Scraper, REM_REGEX};
 
     const DATE_REGEX: &str = r"(\d{4})-(\d{2})-(\d{2})( (\d{2}):(\d{2}):(\d{2}))?";
-    const REM_REGEX: &str = r"(\$|€)(\d)+k - (\$|€)(\d)+k";
 
     #[tokio::test]
     async fn test_scrape_web3careers() {
@@ -343,6 +347,7 @@ mod tests {
     fn job_assertions(jobs: Vec<Job>) {
         assert!(jobs.len() > 0);
         for job in &jobs {
+            println!("{}", job.title);
             println!("{}", job.remuneration);
             assert!(!job.title.is_empty());
             assert!(!job.company.is_empty());

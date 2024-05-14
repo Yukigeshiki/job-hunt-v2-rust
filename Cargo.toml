@@ -16,6 +16,6 @@ chrono = { version = "0.4.38", default-features = false, features = ["serde", "c
 colored = "2.0.0"
 rusqlite = { version = "0.31.0", features = ["bundled"] }
 rustyline = "14.0.0"
+regex = "1.10.4"
 
 [dev-dependencies]
-regex = "1.10.4"
