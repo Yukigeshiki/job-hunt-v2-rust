@@ -106,9 +106,9 @@ impl Repl for SoftwareJobs {
             }
         }
 
-        green_println!("Thank you for using Job Hunt. Goodbye!");
         rl.save_history(".jobhunthistory")
             .map_err(|e| ErrorKind::Repl(e.to_string()))?;
+        green_println!("Thank you for using Job Hunt. Goodbye!");
 
         Ok(())
     }
