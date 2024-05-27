@@ -33,6 +33,8 @@ pub trait Repl {
                     tags,
                     apply: row.get(7)?,
                     site: row.get(8)?,
+                    rem_upper: row.get(9)?,
+                    rem_lower: row.get(10)?,
                 })
             })
             .map_err(|e| ErrorKind::SqliteQuery(e.to_string()))?;

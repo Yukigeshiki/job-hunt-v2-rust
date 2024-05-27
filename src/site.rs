@@ -16,6 +16,7 @@ pub const NEAR_JOBS_URL: &str = "https://careers.near.org/jobs";
 ///    pub jobs: Vec<jobhunt::repository::Job>,
 /// }
 /// ```
+/// This can be done easily by using the `generate_jobsite_struct_and_impl` macro.
 pub trait Site {
     /// Creates a new instance - default values must be provided in the implementation.
     fn new() -> Self;
@@ -88,6 +89,22 @@ impl Web3Careers {
     pub fn format_date_from(date_raw: &str) -> String {
         date_raw.split(' ').collect::<Vec<_>>()[0].to_string()
     }
+
+    /// Returns upper and lower bounds for remuneration.
+    pub fn get_upper_lower(r: &str) -> (u16, u16) {
+        let rem_v = r.split('-').map(|s| s.trim()).collect::<Vec<&str>>();
+        let lower = rem_v[0]
+            .replace(['$', 'k'], "")
+            .trim()
+            .parse::<u16>()
+            .unwrap();
+        let upper = rem_v[1]
+            .replace(['$', 'k'], "")
+            .trim()
+            .parse::<u16>()
+            .unwrap();
+        (lower, upper)
+    }
 }
 
 impl CryptoJobsList {
@@ -107,6 +124,22 @@ impl CryptoJobsList {
                 _ => "".to_string(),
             }
         }
+    }
+
+    /// Returns upper and lower bounds for remuneration.
+    pub fn get_upper_lower(r: &str) -> (u16, u16) {
+        let rem_v = r.split('-').map(|s| s.trim()).collect::<Vec<&str>>();
+        let lower = rem_v[0]
+            .replace(['$', '€', 'k'], "")
+            .trim()
+            .parse::<u16>()
+            .unwrap();
+        let upper = rem_v[1]
+            .replace(['$', '€', 'k'], "")
+            .trim()
+            .parse::<u16>()
+            .unwrap();
+        (lower, upper)
     }
 }
 

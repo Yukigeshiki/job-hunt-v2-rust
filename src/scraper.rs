@@ -27,6 +27,8 @@ pub trait Scraper {
     ///     pub tags: Vec<String>,
     ///     pub apply: String,
     ///     pub site: &'static str,
+    ///     pub rem_lower: u16,
+    ///     pub rem_upper: u16,
     /// }
     /// ```
     /// as defined in repository module.
@@ -146,6 +148,7 @@ impl Web3Careers {
                     if !remuneration.is_empty()
                         && Regex::new(REM_REGEX).unwrap().is_match(&remuneration)
                     {
+                        (job.rem_lower, job.rem_upper) = Self::get_upper_lower(&remuneration);
                         job.remuneration = remuneration;
                     }
                 }
@@ -204,6 +207,9 @@ impl Scraper for CryptoJobsList {
                 if let Some(element) = el.select(&remuneration_selector).next() {
                     let remuneration_raw = element.get_text();
                     job.remuneration = CryptoJobsList::format_remuneration_from(&remuneration_raw);
+                    if !job.remuneration.is_empty() {
+                        (job.rem_lower, job.rem_upper) = Self::get_upper_lower(&job.remuneration);
+                    }
                 }
                 for tag_el in el.select(&tag_selector) {
                     job.tags

@@ -20,6 +20,8 @@ pub struct Job {
     pub tags: Vec<String>,
     pub apply: String,
     pub site: String,
+    pub rem_lower: u16,
+    pub rem_upper: u16,
 }
 
 impl Job {
@@ -183,7 +185,9 @@ impl JobsDbBuilder for SoftwareJobs {
                 remuneration text,
                 tags json,
                 apply text not null,
-                site text not null
+                site text not null,
+                rem_lower int,
+                rem_upper int
             )",
             (),
         )
@@ -201,8 +205,10 @@ impl JobsDbBuilder for SoftwareJobs {
                  remuneration,
                  tags,
                  apply,
-                 site
-            ) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                 site,
+                 rem_lower,
+                 rem_upper
+            ) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 [
                     &job.title,
                     &job.company,
@@ -212,6 +218,8 @@ impl JobsDbBuilder for SoftwareJobs {
                     &tags,
                     &job.apply,
                     &job.site,
+                    &job.rem_lower.to_string(),
+                    &job.rem_upper.to_string(),
                 ],
             )
             .map_err(|e| ErrorKind::SqliteQuery(e.to_string()))?;
