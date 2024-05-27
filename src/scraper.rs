@@ -355,8 +355,6 @@ mod tests {
     fn job_assertions(jobs: Vec<Job>) {
         assert!(jobs.len() > 0);
         for job in &jobs {
-            println!("{}", job.title);
-            println!("{}", job.remuneration);
             assert!(!job.title.is_empty());
             assert!(!job.company.is_empty());
             assert!(Regex::new(DATE_REGEX).unwrap().is_match(&job.date_posted));
