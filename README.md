@@ -4,10 +4,10 @@
 
 A locally run recent job aggregator written in Rust, with a SQLite database, and REPL. Jobs are scraped from job sites and added to the database at start-up and then each time the database is refreshed.
 
-To query jobs you use simplified SQLite syntax. For example, to fetch all senior jobs and order them by date posted you would enter:
+To query jobs you use simplified SQLite syntax. For example, to fetch all senior jobs with the upper bound for remuneration above 100 (if a listing does not include remuneration, the upper and lower bounds will be set at 0), and order them by date posted, you would enter:
 
 ```SQL
-select jobs where title like "%senior%" order by date_posted;
+select jobs where title like "%senior%" and rem_upper > 100 order by date_posted;
 ```
 
 Table fields for querying include:
@@ -21,6 +21,8 @@ remuneration text
 tags json
 apply text not null
 site text not null
+rem_lower int
+rem_upper int
 ```
 
 To refresh the database enter:
